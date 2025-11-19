@@ -1,6 +1,8 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 import os
 from dotenv import load_dotenv
+from pydantic import BaseModel
+from typing import List, Optional
 import json
 from .prompts import tag_candidate_prompt
 
@@ -12,48 +14,32 @@ llm = ChatGoogleGenerativeAI(
     google_api_key=os.getenv("GOOGLE_API_KEY")
 )
 
+class TagCandidates(BaseModel):
+    primary_tags: List[str]
+    technology_tags: List[str]
+    domain_tags: List[str]
+    feature_tags: List[str]
+    all_candidates: List[str]
+
 def generate_tag_candidates(metadata: dict, readme_content: str) -> dict:
     """
     Tag Candidate Agent - Generates potential tags based on metadata and content
-    
-    Args:
-        metadata: Extracted metadata from previous step
-        readme_content: Plain text content from README
-    
-    Returns:
-        Dictionary containing candidate tags
+    Returns a structured Pydantic model.
     """
     prompt = tag_candidate_prompt.format(
         metadata=json.dumps(metadata, indent=2),
         content_preview=readme_content[:1000]
     )
-    response = llm.invoke(prompt)
-    
     try:
-        # Clean the response - remove markdown code blocks if present
-        content = response.content.strip()
-        
-        # Remove ```json and ``` markers
-        if content.startswith("```json"):
-            content = content[7:]  # Remove ```json
-        elif content.startswith("```"):
-            content = content[3:]  # Remove ```
-        
-        if content.endswith("```"):
-            content = content[:-3]  # Remove trailing ```
-        
-        content = content.strip()
-        
-        # Parse JSON
-        candidates = json.loads(content)
+        structured_llm = llm.with_structured_output(TagCandidates)
+        candidates = structured_llm.invoke(prompt)
         return {
             "success": True,
-            "candidates": candidates,
-            "total_count": len(candidates.get("all_candidates", []))
+            "candidates": candidates.dict(),
+            "total_count": len(candidates.all_candidates)
         }
-    except json.JSONDecodeError as e:
+    except Exception as e:
         return {
             "success": False,
-            "error": f"Failed to parse tag candidates: {str(e)}",
-            "raw_response": response.content
+            "error": f"Failed to parse tag candidates: {str(e)}"
         }

@@ -31,7 +31,6 @@ def extract_metadata(content: str) -> dict:
     try:
         structured_llm = llm.with_structured_output(MetadataExtractorResponse)
         metadata = structured_llm.invoke(prompt)
-        print("metadata inside agent", metadata)
         return metadata.dict()
     except Exception as e:
         return {
