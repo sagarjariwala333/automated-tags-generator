@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 import json
 import re
 from .prompts import tag_critic_eval_prompt, tag_critic_revise_prompt
-from tool.tag_critic_rubric import evaluate_tags_rubric, TagCriticResponse, TagEvaluation, RevisionModel, IterationLog
+from tool.tag_critic_rubric import TagCriticResponse, TagEvaluation, RevisionModel, IterationLog
 
 load_dotenv()
 
@@ -28,6 +28,7 @@ def critique_tags(tags: list, context: str = "", threshold: float = 0.7, max_ite
             tag_critic_eval_prompt=tag_critic_eval_prompt,
             tag_critic_revise_prompt=tag_critic_revise_prompt
         )
+        print("model result...", model_result)
         return model_result.dict()
     except Exception as e:
         return {

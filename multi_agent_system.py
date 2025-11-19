@@ -77,4 +77,4 @@ Return ONLY valid JSON, no additional text."""
 if __name__ == "__main__":
     task = "Research about AI trends, write a summary, and review it"
     result = run_multi_agent_system(task)
-    print(f"\nFinal Result:\n{result}")
+    # print(f"\nFinal Result:\n{result}")

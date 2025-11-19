@@ -37,12 +37,10 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
     
     try:
         # Embed the README content
-        print("[Similarity Agent] Embedding README content...")
         readme_embedding = embeddings_model.embed_query(readme_content[:5000])  # Limit to 5000 chars
         readme_vector = np.array(readme_embedding)
         
         # Embed each tag and calculate similarity
-        print(f"[Similarity Agent] Embedding {len(candidate_tags)} tags...")
         tag_similarities = []
         
         for tag in candidate_tags:

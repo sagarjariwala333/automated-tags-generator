@@ -1,15 +1,45 @@
 # Centralized prompt templates for all agents
 
+# The `tag_critic_eval_prompt` variable in the Python code snippet is defining a prompt template for a
+# tag quality evaluator agent. This prompt instructs the agent on how to evaluate a set of tags based
+# on various criteria such as Relevance, Clarity, Quality, Specificity, Coverage, and Distinctiveness.
+# The agent is required to provide scores for each tag in the specified percentage format with three
+# digits after the decimal point and calculate an overall score as the average of individual scores.
+# tag_critic_eval_prompt = (
+#     "You are a tag quality evaluator. Given the context and a set of tags, evaluate each tag on "
+#     "Relevance, Clarity, Quality, Specificity, Coverage, and Distinctiveness as numbers between 0.000 and 100.000 (percentage, 3 digits after decimal point), "
+#     "and provide an overall score (0.000-100.000) as the average. "
+#     "Output a JSON array of objects: "
+#     "[{\"tag\":\"...\",\"relevance\":88.123,\"clarity\":90.111,\"quality\":85.000,\"specificity\":92.000,\"coverage\":80.000,\"distinctiveness\":95.000,\"score\":88.872}, ...]\n\n"
+#     "Context:\n{context}\n\n"
+#     "Tags:\n{tags_str}\n\n"
+#     "Return only JSON. All scores must be in percentage (0.000-100.000) with exactly 3 digits after the decimal point."
+# )
 tag_critic_eval_prompt = (
     "You are a tag quality evaluator. Given the context and a set of tags, evaluate each tag on "
-    "Relevance, Clarity, Quality, Specificity, Coverage, and Distinctiveness as numbers between 0.000 and 100.000 (percentage, 3 digits after decimal point), "
-    "and provide an overall score (0.000-100.000) as the average. "
-    "Output a JSON array of objects: "
-    "[{\"tag\":\"...\",\"relevance\":88.123,\"clarity\":90.111,\"quality\":85.000,\"specificity\":92.000,\"coverage\":80.000,\"distinctiveness\":95.000,\"score\":88.872}, ...]\n\n"
+    "Relevance, Clarity, Quality, Specificity, Coverage, and Distinctiveness as numbers between 0.000 and 100.000 "
+    "(percentage, 3 digits after decimal point), and provide an overall score (0.000-100.000) as the average. \n\n"
+    "Output a JSON array of objects with exactly one object per tag: \n"
+    "[\n"
+    "  {\n"
+    "    \"tag\": \"<tag_name>\",\n"
+    "    \"relevance\": 0.000,\n"
+    "    \"clarity\": 0.000,\n"
+    "    \"quality\": 0.000,\n"
+    "    \"specificity\": 0.000,\n"
+    "    \"coverage\": 0.000,\n"
+    "    \"distinctiveness\": 0.000,\n"
+    "    \"score\": 0.000\n"
+    "  }\n"
+    "]\n\n"
+    "Instructions:\n"
+    "- Include **one object per tag provided**, do not add extra tags.\n"
+    "- All numbers must be in percentage format with exactly 3 digits after the decimal.\n"
+    "- Return **only JSON**, nothing else.\n\n"
     "Context:\n{context}\n\n"
-    "Tags:\n{tags_str}\n\n"
-    "Return only JSON. All scores must be in percentage (0.000-100.000) with exactly 3 digits after the decimal point."
+    "Tags (comma-separated):\n{tags_str}"
 )
+
 
 tag_critic_revise_prompt = (
     "You are a tag improvement assistant. Given the failing tags and critiques, propose improved versions "

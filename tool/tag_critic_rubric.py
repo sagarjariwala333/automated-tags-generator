@@ -28,21 +28,27 @@ def evaluate_tags_rubric(
             continue
         seen.add(norm)
         tags_current.append(t.strip())
+    print(f"[Rubric] Initial tags: {tags_current}")
 
     iteration_logs: List[IterationLog] = []
     last_evaluations: List[TagEvaluation] = []
 
     for iteration in range(1, max_iterations + 1):
-        tags_str = ", ".join(tags_current)
-        eval_prompt = tag_critic_eval_prompt.format(context=context, tags_str=", ".join(tags_current))
+        tags_str = "\n".join(f"- {tag}" for tag in tags_current)
+        print(f"[Rubric] Iteration {iteration} - Tags: {tags_str}")
+        eval_prompt = tag_critic_eval_prompt.format(context=context, tags_str=tags_str)
+        print(f"[Rubric] Iteration {iteration} - Prompt: {eval_prompt}")
 
         # Use structured output for evaluation
         structured_llm = llm.with_structured_output(List[TagEvaluation])
         evaluations = structured_llm.invoke(eval_prompt)
+        print(f"[Rubric] Iteration {iteration} - Evaluations: {evaluations}")
         last_evaluations = evaluations
 
         failing = [e for e in evaluations if e.score < threshold]
         passing = [e for e in evaluations if e.score >= threshold]
+        print(f"[Rubric] Iteration {iteration} - Failing: {failing}")
+        print(f"[Rubric] Iteration {iteration} - Passing: {passing}")
 
         iteration_logs.append(IterationLog(
             iteration=iteration,
@@ -52,15 +58,18 @@ def evaluate_tags_rubric(
         ))
 
         if not failing:
+            print(f"[Rubric] Iteration {iteration} - All tags passed threshold.")
             break
 
         revise_prompt = tag_critic_revise_prompt.format(
             context=context,
             failing_tags="\n".join([f"{f.tag} (score: {f.score})" for f in failing])
         )
+        print(f"[Rubric] Iteration {iteration} - Revise Prompt: {revise_prompt}")
         # Use structured output for revisions
         structured_llm_revise = llm.with_structured_output(List[RevisionModel])
         revisions = structured_llm_revise.invoke(revise_prompt)
+        print(f"[Rubric] Iteration {iteration} - Revisions: {revisions}")
 
         rev_map: Dict[str, str] = {}
         for r in revisions:
@@ -71,6 +80,7 @@ def evaluate_tags_rubric(
                     rev_map[orig.strip()] = revised.strip()
                 else:
                     rev_map[f"_ins_{len(rev_map)}"] = revised.strip()
+        print(f"[Rubric] Iteration {iteration} - Rev map: {rev_map}")
 
         new_tags = []
         for t in tags_current:
@@ -82,6 +92,7 @@ def evaluate_tags_rubric(
         for k, v in rev_map.items():
             if k.startswith("_ins_"):
                 new_tags.append(v)
+        print(f"[Rubric] Iteration {iteration} - New tags: {new_tags}")
 
         normalized = []
         seen2 = set()
@@ -92,6 +103,7 @@ def evaluate_tags_rubric(
             if norm not in seen2:
                 seen2.add(norm)
                 normalized.append(t.strip())
+        print(f"[Rubric] Iteration {iteration} - Normalized tags: {normalized}")
 
         tags_current = normalized
 
@@ -102,6 +114,7 @@ def evaluate_tags_rubric(
                 final_tags.append(e.tag)
     else:
         final_tags = tags_current
+    print(f"[Rubric] Final tags: {final_tags}")
 
     result_model = TagCriticResponse(
         original_tags=recommended_tags,
@@ -112,4 +125,5 @@ def evaluate_tags_rubric(
         last_evaluations=last_evaluations,
         agent="tag_critic_agent"
     )
+    print(f"[Rubric] Result model: {result_model}")
     return result_model

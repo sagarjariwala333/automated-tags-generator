@@ -21,7 +21,6 @@ def create_simple_analysis_workflow():
     return workflow.compile()
 
 def run_simple_analysis_workflow(owner: str, repo: str):
-    print("Workflow starting....")
     app = create_simple_analysis_workflow()
     initial_state = {
         "owner": owner,
@@ -34,12 +33,10 @@ def run_simple_analysis_workflow(owner: str, repo: str):
         "error": "",
         "current_step": "start"
     }
-    print(f"Initial state: {initial_state}")
+    
     try:
         final_state = app.invoke(initial_state)
-        print(f"Final state after workflow: {final_state}")
         if final_state.get('error'):
-            print(f"Workflow error: {final_state.get('error')}")
             return {
                 "success": False,
                 "error": final_state['error'],
@@ -51,15 +48,11 @@ def run_simple_analysis_workflow(owner: str, repo: str):
         candidate_tags_data = final_state.get('candidate_tags', {})
         tag_critic_data = final_state.get('tag_critic', {})
         tag_rule_data = final_state.get('tag_rule', {})
-        print(f"Similarity data: {similarity_data}")
-        print(f"Candidate tags data: {candidate_tags_data}")
-        print(f"Tag critic data: {tag_critic_data}")
         all_candidates = []
         if candidate_tags_data.get('success'):
             candidates = candidate_tags_data.get('candidates', {})
             all_candidates = candidates.get('all_candidates', [])
         recommended_tags = similarity_data.get('recommended_tags', all_candidates[:10])
-        print(f"Recommended tags: {recommended_tags}")
         return {
             "success": True,
             "owner": owner,
