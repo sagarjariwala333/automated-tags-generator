@@ -2,6 +2,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 import os
 from dotenv import load_dotenv
 import json
+from .prompts import tag_candidate_prompt
 
 load_dotenv()
 
@@ -22,31 +23,10 @@ def generate_tag_candidates(metadata: dict, readme_content: str) -> dict:
     Returns:
         Dictionary containing candidate tags
     """
-    
-    prompt = f"""You are a Tag Candidate Generator Agent. Based on the provided metadata and content, generate relevant tags.
-
-Metadata:
-{json.dumps(metadata, indent=2)}
-
-Content Preview:
-{readme_content[:1000]}...
-
-Generate 15-20 candidate tags that:
-1. Represent the main topics and technologies
-2. Include programming languages, frameworks, and tools
-3. Cover use cases and application domains
-4. Are specific and relevant
-5. Follow standard tagging conventions (lowercase, hyphenated)
-
-Return ONLY a JSON object with this structure:
-{{
-  "primary_tags": ["tag1", "tag2", "tag3"],
-  "technology_tags": ["tech1", "tech2"],
-  "domain_tags": ["domain1", "domain2"],
-  "feature_tags": ["feature1", "feature2"],
-  "all_candidates": ["all", "tags", "here"]
-}}"""
-    
+    prompt = tag_candidate_prompt.format(
+        metadata=json.dumps(metadata, indent=2),
+        content_preview=readme_content[:1000]
+    )
     response = llm.invoke(prompt)
     
     try:

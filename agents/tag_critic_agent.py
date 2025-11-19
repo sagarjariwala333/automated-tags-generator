@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, Field
 import json
 import re
+from .prompts import tag_critic_eval_prompt, tag_critic_revise_prompt
 
 load_dotenv()
 
@@ -173,15 +174,7 @@ def evaluate_tags_rubric(
 
     for iteration in range(1, max_iterations + 1):
         tags_str = ", ".join(tags_current)
-        eval_prompt = (
-            f"You are a tag quality evaluator. Given the context and a set of tags, evaluate each tag on "
-            f"Relevance, Clarity, Quality, Specificity, Coverage, and Distinctiveness as numbers between 0.000 and 100.000 (percentage, 3 digits after decimal point), and provide an overall score (0.000-100.000) as the average. "
-            f"Output a JSON array of objects: "
-            "[{\"tag\":\"...\",\"relevance\":88.123,\"clarity\":90.111,\"quality\":85.000,\"specificity\":92.000,\"coverage\":80.000,\"distinctiveness\":95.000,\"score\":88.872}, ...]\n\n"
-            f"Context:\n{context}\n\n"
-            f"Tags:\n{tags_str}\n\n"
-            "Return only JSON. All scores must be in percentage (0.000-100.000) with exactly 3 digits after the decimal point."
-        )
+        eval_prompt = tag_critic_eval_prompt.format(context=context, tags_str=", ".join(tags_current))
 
         eval_response = llm.invoke(eval_prompt)
         eval_raw = eval_response.content if hasattr(eval_response, "content") else str(eval_response)
@@ -209,14 +202,9 @@ def evaluate_tags_rubric(
         if not failing:
             break
 
-        revise_prompt = (
-            "You are a tag improvement assistant. Given the failing tags and critiques, propose improved versions "
-            "that address relevance, clarity, and quality. Return JSON array with objects "
-            "[{\"original\":\"...\",\"revised\":\"...\",\"reason\":\"...\"}, ...].\n\n"
-            f"Context:\n{context}\n\n"
-            "Failing tags and their current evaluations:\n"
-            + "\n".join([f"{f.tag} (score: {f.score})" for f in failing])
-            + "\n\nOnly return JSON."
+        revise_prompt = tag_critic_revise_prompt.format(
+            context=context,
+            failing_tags="\n".join([f"{f.tag} (score: {f.score})" for f in failing])
         )
 
         revise_response = llm.invoke(revise_prompt)
