@@ -1,5 +1,5 @@
 from typing import List, Dict
-from tool.tag_critic_models import TagEvaluation, RevisionModel, IterationLog, TagCriticResponse
+from tool.tag_critic_models import TagEvaluation, RevisionModel, IterationLog, TagCriticResponse, TagEvaluationList, RevisionModelList
 from tool.tag_critic_utils import normalize_tag
 
 def evaluate_tags_rubric(
@@ -40,8 +40,9 @@ def evaluate_tags_rubric(
         print(f"[Rubric] Iteration {iteration} - Prompt: {eval_prompt}")
 
         # Use structured output for evaluation
-        structured_llm = llm.with_structured_output(List[TagEvaluation])
-        evaluations = structured_llm.invoke(eval_prompt)
+        structured_llm = llm.with_structured_output(TagEvaluationList)
+        evaluations_response = structured_llm.invoke(eval_prompt)
+        evaluations = evaluations_response.evaluations
         print(f"[Rubric] Iteration {iteration} - Evaluations: {evaluations}")
         last_evaluations = evaluations
 
@@ -67,8 +68,9 @@ def evaluate_tags_rubric(
         )
         print(f"[Rubric] Iteration {iteration} - Revise Prompt: {revise_prompt}")
         # Use structured output for revisions
-        structured_llm_revise = llm.with_structured_output(List[RevisionModel])
-        revisions = structured_llm_revise.invoke(revise_prompt)
+        structured_llm_revise = llm.with_structured_output(RevisionModelList)
+        revisions_response = structured_llm_revise.invoke(revise_prompt)
+        revisions = revisions_response.revisions
         print(f"[Rubric] Iteration {iteration} - Revisions: {revisions}")
 
         rev_map: Dict[str, str] = {}

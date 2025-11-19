@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 import json
 import re
 from .prompts import tag_critic_eval_prompt, tag_critic_revise_prompt
-from tool.tag_critic_rubric import TagCriticResponse, TagEvaluation, RevisionModel, IterationLog
+from tool.tag_critic_rubric import TagCriticResponse, TagEvaluation, RevisionModel, IterationLog, evaluate_tags_rubric
 
 load_dotenv()
 

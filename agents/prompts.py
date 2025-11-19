@@ -21,7 +21,7 @@ tag_critic_eval_prompt = (
     "(percentage, 3 digits after decimal point), and provide an overall score (0.000-100.000) as the average. \n\n"
     "Output a JSON array of objects with exactly one object per tag: \n"
     "[\n"
-    "  {\n"
+    "  {{\n"
     "    \"tag\": \"<tag_name>\",\n"
     "    \"relevance\": 0.000,\n"
     "    \"clarity\": 0.000,\n"
@@ -30,7 +30,7 @@ tag_critic_eval_prompt = (
     "    \"coverage\": 0.000,\n"
     "    \"distinctiveness\": 0.000,\n"
     "    \"score\": 0.000\n"
-    "  }\n"
+    "  }}\n"
     "]\n\n"
     "Instructions:\n"
     "- Include **one object per tag provided**, do not add extra tags.\n"
@@ -62,7 +62,7 @@ tag_candidate_prompt = (
     "4. Are specific and relevant\n"
     "5. Follow standard tagging conventions (lowercase, hyphenated)\n\n"
     "Return ONLY a JSON object with this structure:\n"
-    "{{\n  'primary_tags': [...],\n  'technology_tags': [...],\n  'domain_tags': [...],\n  'feature_tags': [...],\n  'all_candidates': [...]\n}}"
+    "{{{{\n  'primary_tags': [...],\n  'technology_tags': [...],\n  'domain_tags': [...],\n  'feature_tags': [...],\n  'all_candidates': [...]\n}}}}"
 )
 
 metadata_extractor_prompt = (
@@ -81,7 +81,7 @@ metadata_extractor_prompt = (
 )
 
 tag_polisher_prompt = (
-    "Polish these tags: {tags}\nCritique: {critique}\n\nReturn JSON: {{'polished_tags': [...]}}"
+    "Polish these tags: {tags}\nCritique: {critique}\n\nReturn JSON: {{{{'polished_tags': [...]}}}}"
 )
 
 multi_agent_system_prompt = (

@@ -31,3 +31,9 @@ class TagCriticResponse(BaseModel):
     last_evaluations: List[TagEvaluation]
     agent: str
     error: Optional[str] = None
+
+class TagEvaluationList(BaseModel):
+    evaluations: List[TagEvaluation]
+
+class RevisionModelList(BaseModel):
+    revisions: List[RevisionModel]
