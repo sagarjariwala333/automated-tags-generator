@@ -3,6 +3,7 @@ from agents.metadata_extractor_agent import extract_metadata
 from agents.tag_candidate_agent import generate_tag_candidates
 from agents.tag_similarity_agent import calculate_tag_similarity
 from agents.tag_critic_agent import critique_tags
+from agents.tag_rule_agent import rule_based_tag_filter
 from .state import SimpleAnalysisState
 
 # Node functions
@@ -114,4 +115,32 @@ def tag_critic_node(state: SimpleAnalysisState) -> SimpleAnalysisState:
     critic_result = critique_tags(all_tags, context=content)
     state['tag_critic'] = critic_result
     state['current_step'] = "tag_critic_complete"
+    return state
+
+def tag_rule_node(state: SimpleAnalysisState) -> SimpleAnalysisState:
+    """Tag Rule Node - Filters tags based on rule-based agent"""
+    # Use candidate tags as input
+    candidate_tags_data = state.get('candidate_tags', {})
+    all_tags = []
+    if candidate_tags_data.get('success'):
+        candidates = candidate_tags_data.get('candidates', {})
+        all_tags = candidates.get('all_candidates', [])
+    if not all_tags and 'candidates' in candidate_tags_data:
+        candidates = candidate_tags_data['candidates']
+        if isinstance(candidates, dict):
+            all_tags = candidates.get('all_candidates', [])
+            if not all_tags:
+                all_tags = (
+                    candidates.get('primary_tags', []) +
+                    candidates.get('technology_tags', []) +
+                    candidates.get('domain_tags', []) +
+                    candidates.get('feature_tags', [])
+                )
+    if not all_tags:
+        state['error'] = f"No candidate tags available for tag rule agent. Data structure: {candidate_tags_data}"
+        state['current_step'] = "tag_rule"
+        return state
+    rule_result = rule_based_tag_filter(all_tags)
+    state['tag_rule'] = rule_result
+    state['current_step'] = "tag_rule_complete"
     return state
