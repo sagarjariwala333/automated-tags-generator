@@ -1,8 +1,6 @@
 import requests
-import base64
-from bs4 import BeautifulSoup
-from typing import Dict, Optional
-import re
+from typing import Dict
+from tool.base64_to_html_plain import decode_base64_to_text, markdown_to_html, html_to_plain_text
 
 def fetch_github_readme(owner: str, repo: str) -> Dict[str, any]:
     """
@@ -92,73 +90,3 @@ def fetch_github_readme(owner: str, repo: str) -> Dict[str, any]:
             "owner": owner,
             "repo": repo
         }
-
-def decode_base64_to_text(base64_content: str) -> str:
-    """Decode base64 content to plain text"""
-    try:
-        # Remove whitespace and newlines
-        base64_content = base64_content.replace("\n", "").replace(" ", "")
-        # Decode base64
-        decoded_bytes = base64.b64decode(base64_content)
-        # Convert to string
-        return decoded_bytes.decode("utf-8")
-    except Exception as e:
-        return f"Error decoding base64: {str(e)}"
-
-def html_to_plain_text(html_content: str) -> str:
-    """Convert HTML content to plain text"""
-    if not html_content:
-        return ""
-    
-    try:
-        # Parse HTML
-        soup = BeautifulSoup(html_content, "html.parser")
-        
-        # Remove script and style elements
-        for script in soup(["script", "style"]):
-            script.decompose()
-        
-        # Get text
-        text = soup.get_text()
-        
-        # Clean up whitespace
-        lines = (line.strip() for line in text.splitlines())
-        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-        text = "\n".join(chunk for chunk in chunks if chunk)
-        
-        return text
-    except Exception as e:
-        return f"Error converting HTML to text: {str(e)}"
-
-def markdown_to_html(markdown_content: str) -> str:
-    """Basic markdown to HTML conversion"""
-    if not markdown_content:
-        return ""
-    
-    html = markdown_content
-    
-    # Headers
-    html = re.sub(r'^### (.*?)$', r'<h3>\1</h3>', html, flags=re.MULTILINE)
-    html = re.sub(r'^## (.*?)$', r'<h2>\1</h2>', html, flags=re.MULTILINE)
-    html = re.sub(r'^# (.*?)$', r'<h1>\1</h1>', html, flags=re.MULTILINE)
-    
-    # Bold
-    html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
-    html = re.sub(r'__(.*?)__', r'<strong>\1</strong>', html)
-    
-    # Italic
-    html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html)
-    html = re.sub(r'_(.*?)_', r'<em>\1</em>', html)
-    
-    # Links
-    html = re.sub(r'\[(.*?)\]\((.*?)\)', r'<a href="\2">\1</a>', html)
-    
-    # Code blocks
-    html = re.sub(r'```(.*?)```', r'<pre><code>\1</code></pre>', html, flags=re.DOTALL)
-    html = re.sub(r'`(.*?)`', r'<code>\1</code>', html)
-    
-    # Line breaks
-    html = html.replace('\n\n', '</p><p>')
-    html = f'<p>{html}</p>'
-    
-    return html
