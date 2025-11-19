@@ -23,6 +23,7 @@ class SimpleAnalysisResponse(BaseModel):
     metadata: Dict[str, Any] = Field(..., description="Extracted metadata")
     candidate_tags: Optional[Dict[str, Any]] = Field(None, description="Generated candidate tags")
     similarity_analysis: Optional[Dict[str, Any]] = Field(None, description="Cosine similarity analysis")
+    tag_critic: Optional[Dict[str, Any]] = Field(None, description="Tag critic agent output")
     summary: Dict[str, Any] = Field(..., description="Summary of the analysis")
     error: Optional[str] = Field(None, description="Error message if workflow failed")
     failed_at_step: Optional[str] = Field(None, description="Step where workflow failed")

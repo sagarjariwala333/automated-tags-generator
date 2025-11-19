@@ -16,10 +16,13 @@ llm = ChatGoogleGenerativeAI(
 
 class TagEvaluation(BaseModel):
     tag: str
-    relevance: float = Field(0.0, ge=0.0, le=1.0)
-    clarity: float = Field(0.0, ge=0.0, le=1.0)
-    quality: float = Field(0.0, ge=0.0, le=1.0)
-    score: float = Field(0.0, ge=0.0, le=1.0)
+    relevance: float = Field(0.0, ge=0.0, le=100.0)
+    clarity: float = Field(0.0, ge=0.0, le=100.0)
+    quality: float = Field(0.0, ge=0.0, le=100.0)
+    specificity: float = Field(0.0, ge=0.0, le=100.0)
+    coverage: float = Field(0.0, ge=0.0, le=100.0)
+    distinctiveness: float = Field(0.0, ge=0.0, le=100.0)
+    score: float = Field(0.0, ge=0.0, le=100.0)
 
 class RevisionModel(BaseModel):
     original: Optional[str] = None
@@ -109,46 +112,47 @@ def _normalize_tag(tag: str) -> str:
     return tag.strip().lower()
 
 def _to_tag_evaluation(e: Dict[str, Any]) -> TagEvaluation:
-    """Convert a raw evaluation dict to a TagEvaluation model with defaults."""
     tag = e.get("tag") or e.get("name") or (str(e.get("tag", "")) if "tag" in e else "")
-    try:
-        relevance = float(e.get("relevance", e.get("rel", 0.0)))
-    except Exception:
-        relevance = 0.0
-    try:
-        clarity = float(e.get("clarity", e.get("cla", 0.0)))
-    except Exception:
-        clarity = 0.0
-    try:
-        quality = float(e.get("quality", e.get("qual", 0.0)))
-    except Exception:
-        quality = 0.0
+    def parse_factor(key):
+        try:
+            val = float(e.get(key, 0.0))
+            return round(val, 3)
+        except Exception:
+            return 0.0
+    relevance = parse_factor("relevance")
+    clarity = parse_factor("clarity")
+    quality = parse_factor("quality")
+    specificity = parse_factor("specificity")
+    coverage = parse_factor("coverage")
+    distinctiveness = parse_factor("distinctiveness")
     if "score" in e and e.get("score") is not None:
         try:
             score = float(e.get("score"))
         except Exception:
-            score = round((relevance + clarity + quality) / 3.0, 3)
+            score = (relevance + clarity + quality + specificity + coverage + distinctiveness) / 6.0
     else:
-        score = round((relevance + clarity + quality) / 3.0, 3)
-    score = max(0.0, min(1.0, score))
+        score = (relevance + clarity + quality + specificity + coverage + distinctiveness) / 6.0
+    score = round(score, 3)
     return TagEvaluation(
         tag=str(tag).strip(),
         relevance=round(relevance, 3),
         clarity=round(clarity, 3),
         quality=round(quality, 3),
+        specificity=round(specificity, 3),
+        coverage=round(coverage, 3),
+        distinctiveness=round(distinctiveness, 3),
         score=round(score, 3)
     )
 
 def evaluate_tags_rubric(
     recommended_tags: List[str],
     context: str = "",
-    threshold: float = 0.7,
+    threshold: float = 70.0,
     max_iterations: int = 3
 ) -> TagCriticResponse:
     """
     Evaluate and refine tags using a rubric evaluator loop.
-
-    - Scores tags for relevance, clarity, quality and overall score (0-1).
+    - Scores tags for relevance, clarity, quality, specificity, coverage, distinctiveness, and overall score (0-100).
     - Attempts to refine failing tags up to max_iterations.
     - Eliminates tags that still don't pass threshold.
     Returns a TagCriticResponse Pydantic model.
@@ -171,12 +175,12 @@ def evaluate_tags_rubric(
         tags_str = ", ".join(tags_current)
         eval_prompt = (
             f"You are a tag quality evaluator. Given the context and a set of tags, evaluate each tag on "
-            f"Relevance, Clarity, and Quality as numbers between 0.0 and 1.0, and provide an overall score (0.0-1.0) "
-            f"as the average. Output a JSON array of objects: "
-            "[{\"tag\":\"...\",\"relevance\":0.80,\"clarity\":0.70,\"quality\":0.85,\"score\":0.78}, ...]\n\n"
+            f"Relevance, Clarity, Quality, Specificity, Coverage, and Distinctiveness as numbers between 0.000 and 100.000 (percentage, 3 digits after decimal point), and provide an overall score (0.000-100.000) as the average. "
+            f"Output a JSON array of objects: "
+            "[{\"tag\":\"...\",\"relevance\":88.123,\"clarity\":90.111,\"quality\":85.000,\"specificity\":92.000,\"coverage\":80.000,\"distinctiveness\":95.000,\"score\":88.872}, ...]\n\n"
             f"Context:\n{context}\n\n"
             f"Tags:\n{tags_str}\n\n"
-            "Return only JSON. Keep three decimal places for scores."
+            "Return only JSON. All scores must be in percentage (0.000-100.000) with exactly 3 digits after the decimal point."
         )
 
         eval_response = llm.invoke(eval_prompt)
