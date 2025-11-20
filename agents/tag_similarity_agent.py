@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 from tool.readme_chunking import chunk_text
 from tool.ollama_embeddings import get_ollama_embeddings
 from tool.similarity_calculator import calculate_tag_chunk_similarity
+from tool.semantic_deduplication import deduplicate_tags_semantically
 
 
 def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> Dict[str, Any]:
@@ -43,13 +44,25 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
             for tag, vector in zip(candidate_tags, tag_embeddings)
         ]
         
+        # Step 4.5: Semantic deduplication - Remove semantically identical tags
+        # (e.g., 'javascript' and 'js', 'python' and 'py')
+        deduplicated_tags = deduplicate_tags_semantically(tag_data, similarity_threshold=0.95)
+        
+        # Filter tag_data to only include deduplicated tags
+        tag_data_deduplicated = [
+            item for item in tag_data if item["tag"] in deduplicated_tags
+        ]
+        
+        # Track how many duplicates were removed
+        duplicates_removed = len(candidate_tags) - len(deduplicated_tags)
+        
         readme_chunk_data = [
             {"chunk": chunk, "vector": vector}
             for chunk, vector in zip(readme_chunks, readme_embeddings)
         ]
         
         # Step 5: Calculate similarity using the similarity calculator tool
-        ranked_tags = calculate_tag_chunk_similarity(tag_data, readme_chunk_data)
+        ranked_tags = calculate_tag_chunk_similarity(tag_data_deduplicated, readme_chunk_data)
         
         # Step 6: Format results to match expected output structure
         tag_similarities = [
@@ -75,8 +88,10 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
         return {
             "success": True,
             "agent": "tag_similarity_agent",
-            "method": "ollama_embeddings_with_chunking",
-            "total_tags": len(candidate_tags),
+            "method": "ollama_embeddings_with_chunking_and_deduplication",
+            "total_tags_input": len(candidate_tags),
+            "total_tags_after_dedup": len(deduplicated_tags),
+            "duplicates_removed": duplicates_removed,
             "total_chunks": len(readme_chunks),
             "tag_similarities": tag_similarities,
             "categorized_tags": {
