@@ -80,7 +80,8 @@ def tag_critic_node(state: SimpleAnalysisState) -> SimpleAnalysisState:
     similarity_analysis = state.get('similarity_analysis', {})
     
     # Get recommended tags from similarity analysis
-    recommended_tags = similarity_analysis.get('recommended_tags', [])
+    tag_similarities = similarity_analysis.get('tag_similarities', [])
+    recommended_tags = [ele.get('tag') for ele in tag_similarities] if tag_similarities else []
     
     if not recommended_tags:
         # Fallback to top candidate tags if similarity didn't produce recommendations
