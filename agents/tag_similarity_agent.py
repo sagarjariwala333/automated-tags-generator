@@ -1,31 +1,16 @@
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
-import os
-from dotenv import load_dotenv
 import numpy as np
 from typing import List, Dict, Any
+from tool.readme_chunking import chunk_text
+from tool.ollama_embeddings import get_ollama_embeddings
+from tool.similarity_calculator import calculate_tag_chunk_similarity
 
-load_dotenv()
-
-# Initialize embeddings model
-embeddings_model = GoogleGenerativeAIEmbeddings(
-    model="models/embedding-001",
-    google_api_key=os.getenv("GOOGLE_API_KEY")
-)
-
-def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
-    """Calculate cosine similarity between two vectors"""
-    dot_product = np.dot(vec1, vec2)
-    norm1 = np.linalg.norm(vec1)
-    norm2 = np.linalg.norm(vec2)
-    
-    if norm1 == 0 or norm2 == 0:
-        return 0.0
-    
-    return dot_product / (norm1 * norm2)
 
 def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> Dict[str, Any]:
     """
-    Tag Similarity Agent - Calculates cosine similarity between README and tags using embeddings
+    Tag Similarity Agent - Calculates cosine similarity between README chunks and tags using Ollama embeddings.
+    
+    Uses a chunking strategy to better capture semantic meaning across long README files.
+    Each tag is compared against all README chunks and the maximum similarity is used.
     
     Args:
         readme_content: Plain text content from README
@@ -36,29 +21,47 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
     """
     
     try:
-        # Embed the README content
-        readme_embedding = embeddings_model.embed_query(readme_content[:5000])  # Limit to 5000 chars
-        readme_vector = np.array(readme_embedding)
+        # Step 1: Chunk the README content for better semantic coverage
+        readme_chunks = chunk_text(readme_content, chunk_size=1000, overlap=200)
         
-        # Embed each tag and calculate similarity
-        tag_similarities = []
+        if not readme_chunks:
+            return {
+                "success": False,
+                "error": "Failed to chunk README content",
+                "agent": "tag_similarity_agent"
+            }
         
-        for tag in candidate_tags:
-            tag_embedding = embeddings_model.embed_query(tag)
-            tag_vector = np.array(tag_embedding)
-            
-            similarity_score = cosine_similarity(readme_vector, tag_vector)
-            
-            tag_similarities.append({
+        # Step 2: Embed README chunks using Ollama
+        readme_embeddings = get_ollama_embeddings(readme_chunks)
+        
+        # Step 3: Embed candidate tags using Ollama
+        tag_embeddings = get_ollama_embeddings(candidate_tags)
+        
+        # Step 4: Prepare data structures for similarity calculation
+        tag_data = [
+            {"tag": tag, "vector": vector}
+            for tag, vector in zip(candidate_tags, tag_embeddings)
+        ]
+        
+        readme_chunk_data = [
+            {"chunk": chunk, "vector": vector}
+            for chunk, vector in zip(readme_chunks, readme_embeddings)
+        ]
+        
+        # Step 5: Calculate similarity using the similarity calculator tool
+        ranked_tags = calculate_tag_chunk_similarity(tag_data, readme_chunk_data)
+        
+        # Step 6: Format results to match expected output structure
+        tag_similarities = [
+            {
                 "tag": tag,
-                "similarity_score": float(similarity_score),
-                "relevance": "high" if similarity_score > 0.7 else "medium" if similarity_score > 0.5 else "low"
-            })
+                "similarity_score": float(score),
+                "relevance": "high" if score > 0.7 else "medium" if score > 0.5 else "low"
+            }
+            for tag, score in ranked_tags
+        ]
         
-        # Sort by similarity score (descending)
-        tag_similarities.sort(key=lambda x: x["similarity_score"], reverse=True)
-        
-        # Categorize tags
+        # Categorize tags by relevance
         high_relevance = [t for t in tag_similarities if t["similarity_score"] > 0.7]
         medium_relevance = [t for t in tag_similarities if 0.5 < t["similarity_score"] <= 0.7]
         low_relevance = [t for t in tag_similarities if t["similarity_score"] <= 0.5]
@@ -72,8 +75,9 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
         return {
             "success": True,
             "agent": "tag_similarity_agent",
-            "method": "cosine_similarity_with_embeddings",
+            "method": "ollama_embeddings_with_chunking",
             "total_tags": len(candidate_tags),
+            "total_chunks": len(readme_chunks),
             "tag_similarities": tag_similarities,
             "categorized_tags": {
                 "high_relevance": [t["tag"] for t in high_relevance],
