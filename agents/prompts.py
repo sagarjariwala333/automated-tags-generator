@@ -97,3 +97,25 @@ multi_agent_system_prompt = (
     "=== REVIEWER AGENT ===\n[Your review and final version here]\n\n"
     "Begin processing now."
 )
+
+chunk_tag_prompt = """You are a GitHub repository tag generator. Analyze the following README chunk and generate tags that match real GitHub repository topic/tag conventions.
+
+Text Chunk:
+{chunk}
+
+Generate 5–10 high-quality tags that:
+
+1. Align with common GitHub topics (e.g., "javascript", "machine-learning", "react", "api", "docker").
+2. Follow GitHub standards:
+   - lowercase only
+   - no spaces (use hyphens if needed)
+   - avoid punctuation/special characters
+   - avoid duplicates
+3. Cover:
+   - technologies, frameworks, or languages mentioned
+   - domain or use case (e.g., "web-app", "data-analysis")
+   - key features, capabilities, or patterns (e.g., "authentication", "rest-api")
+4. Prefer widely-used tags over overly-specific or custom ones.
+5. Make sure each tag could realistically appear in a GitHub repository's "Topics" section.
+
+Return ONLY an array of strings. No explanations."""
