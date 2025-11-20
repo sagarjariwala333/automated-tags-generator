@@ -1,6 +1,8 @@
 import requests
 from typing import Dict
-from tool.base64_to_html_plain import decode_base64_to_text, markdown_to_html, html_to_plain_text
+from tool.github_readme import fetch_readme_content
+from tool.github_technologies import fetch_github_technologies
+from tool.github_topics import fetch_github_topics
 
 def fetch_github_readme(owner: str, repo: str) -> Dict[str, any]:
     """
@@ -14,60 +16,41 @@ def fetch_github_readme(owner: str, repo: str) -> Dict[str, any]:
         Dictionary containing README content in various formats
     """
     
-    # GitHub API endpoint for README
-    api_url = f"https://api.github.com/repos/{owner}/{repo}/readme"
-    
     try:
-        # Fetch README metadata
-        response = requests.get(api_url, headers={
-            "Accept": "application/vnd.github.v3+json"
-        })
+        # Fetch README content using the tool
+        readme_result = fetch_readme_content(owner, repo)
         
-        if response.status_code == 404:
+        if not readme_result["success"]:
             return {
                 "success": False,
-                "error": "Repository or README not found",
+                "error": readme_result.get("error", "Unknown error"),
                 "owner": owner,
                 "repo": repo
             }
         
-        response.raise_for_status()
-        readme_data = response.json()
+        # Fetch additional repository metadata
+        technologies = fetch_github_technologies(owner, repo)
+        topics = fetch_github_topics(owner, repo)
         
-        # Extract base64 content
-        base64_content = readme_data.get("content", "")
-        
-        # Decode base64 to plain text
-        plain_text = decode_base64_to_text(base64_content)
-        
-        # Get HTML content from GitHub API
-        html_url = readme_data.get("html_url", "")
-        download_url = readme_data.get("download_url", "")
-        
-        # Fetch raw HTML if available
-        html_content = None
-        if download_url:
-            html_response = requests.get(download_url)
-            if html_response.status_code == 200:
-                raw_content = html_response.text
-                # Convert markdown to HTML-like structure (basic)
-                html_content = markdown_to_html(raw_content)
-        
-        # Convert HTML to plain text
-        plain_from_html = html_to_plain_text(html_content) if html_content else plain_text
+        # Extract data from readme_result
+        plain_text = readme_result["plain_text"]
+        html_content = readme_result["html"]
+        plain_from_html = readme_result["plain_from_html"]
+        metadata = readme_result["metadata"]
         
         return {
             "success": True,
             "owner": owner,
             "repo": repo,
-            "name": readme_data.get("name", ""),
-            "path": readme_data.get("path", ""),
-            "size": readme_data.get("size", 0),
-            "url": readme_data.get("url", ""),
-            "html_url": html_url,
-            "download_url": download_url,
+            "name": metadata["name"],
+            "path": metadata["path"],
+            "size": metadata["size"],
+            "url": metadata["url"],
+            "html_url": metadata["html_url"],
+            "download_url": metadata["download_url"],
+            "technologies": technologies,
+            "topics": topics,
             "content": {
-                "base64": base64_content[:100] + "..." if len(base64_content) > 100 else base64_content,
                 "plain_text": plain_text,
                 "html": html_content,
                 "plain_from_html": plain_from_html,
@@ -76,13 +59,6 @@ def fetch_github_readme(owner: str, repo: str) -> Dict[str, any]:
             }
         }
         
-    except requests.exceptions.RequestException as e:
-        return {
-            "success": False,
-            "error": f"Request failed: {str(e)}",
-            "owner": owner,
-            "repo": repo
-        }
     except Exception as e:
         return {
             "success": False,
