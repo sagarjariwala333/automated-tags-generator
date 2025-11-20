@@ -46,7 +46,7 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
         
         # Step 4.5: Semantic deduplication - Remove semantically identical tags
         # (e.g., 'javascript' and 'js', 'python' and 'py')
-        deduplicated_tags = deduplicate_tags_semantically(tag_data, similarity_threshold=0.95)
+        deduplicated_tags = deduplicate_tags_semantically(tag_data, similarity_threshold=0.8)
         
         # Filter tag_data to only include deduplicated tags
         tag_data_deduplicated = [
@@ -72,6 +72,7 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
                 "relevance": "high" if score > 0.7 else "medium" if score > 0.5 else "low"
             }
             for tag, score in ranked_tags
+            if float(score) > 0.5
         ]
         
         # Categorize tags by relevance

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from schemas.simple_workflow_schemas import SimpleAnalysisRequest, SimpleAnalysisResponse
 from workflows import run_simple_analysis_workflow
 import os
+from tool.json_response import JsonResponse
 
 router = APIRouter(prefix="/workflow", tags=["workflows"])
 
@@ -75,7 +76,8 @@ async def simple_analysis_workflow_path(owner: str, repo: str):
                 detail=result.get("error", "Workflow failed")
             )
         
-        return SimpleAnalysisResponse(**result)
+        response = JsonResponse.success_response(data=result.get("tag_critic", {}).get("tags", []))
+        return response
     except HTTPException:
         raise
     except Exception as e:

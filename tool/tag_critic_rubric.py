@@ -111,11 +111,19 @@ def evaluate_tags_rubric(
 
     final_tags = []
     if last_evaluations:
-        for e in last_evaluations:
-            if e.score >= threshold:
-                final_tags.append(e.tag)
+        # Filter passing tags, then sort by score (descending)
+        passing = [e for e in last_evaluations if e.score >= threshold]
+        sorted_passing = sorted(passing, key=lambda x: x.score, reverse=True)
+        final_tags = [e.tag for e in sorted_passing[:10]]
     else:
-        final_tags = tags_current
+        final_tags = tags_current[:10]
+
+    # if last_evaluations:
+    #     for e in last_evaluations:
+    #         if e.score >= threshold:
+    #             final_tags.append(e.tag)
+    # else:
+    #     final_tags = tags_current
     print(f"[Rubric] Final tags: {final_tags}")
 
     result_model = TagCriticResponse(
