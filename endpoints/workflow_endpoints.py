@@ -49,7 +49,7 @@ async def simple_analysis_workflow(request: SimpleAnalysisRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/simple/analyze/{owner}/{repo}", response_model=SimpleAnalysisResponse)
+@router.get("/simple/analyze/{owner}/{repo}", response_model=JsonResponse)
 async def simple_analysis_workflow_path(owner: str, repo: str):
     """
     Simple Analysis Workflow (GET method with path parameters)
@@ -76,8 +76,7 @@ async def simple_analysis_workflow_path(owner: str, repo: str):
                 detail=result.get("error", "Workflow failed")
             )
         
-        response = JsonResponse.success_response(data=result.get("tag_critic", {}).get("tags", []))
-        return response
+        return JsonResponse.success_response(data=result.get("tag_critic", {}).get("final_tags", []))
     except HTTPException:
         raise
     except Exception as e:
