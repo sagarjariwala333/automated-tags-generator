@@ -13,6 +13,18 @@ llm = ChatGoogleGenerativeAI(
 
 def run_multi_agent_system(task: str) -> str:
     """Run optimized multi-agent system with a single comprehensive call"""
+    # Input validation
+    if not task or not isinstance(task, str):
+        return "Error: Invalid task parameter - must be a non-empty string"
+    
+    if not task.strip():
+        return "Error: Task is empty after stripping whitespace"
+    
+    # Check task length
+    MAX_TASK_LENGTH = 10000
+    if len(task) > MAX_TASK_LENGTH:
+        print(f"[multi_agent_coordinator] Warning: Task length {len(task)} exceeds max {MAX_TASK_LENGTH}, truncating")
+        task = task[:MAX_TASK_LENGTH]
     
     # Single optimized prompt that simulates all agents in one call
     prompt = f"""You are a multi-agent AI system with specialized roles. Process this task through all agents:
@@ -38,5 +50,16 @@ Format your response as:
 
 Begin processing now."""
     
-    response = llm.invoke(prompt)
-    return response.content
+    try:
+        response = llm.invoke(prompt)
+        
+        if not response or not hasattr(response, 'content'):
+            return "Error: LLM returned empty or invalid response"
+        
+        if not response.content or not response.content.strip():
+            return "Error: LLM response content is empty"
+        
+        return response.content
+        
+    except Exception as e:
+        return f"Error: Multi-agent system failed - {str(e)}"

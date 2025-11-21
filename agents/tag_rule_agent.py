@@ -19,17 +19,66 @@ def is_valid_tag(tag: str, seen: set) -> Tuple[bool, str]:
     return True, ""
 
 def rule_based_tag_filter(tags: List[str]) -> Dict[str, Any]:
+    """
+    Tag Rule Agent - Applies rule-based filtering to tags
+    
+    Args:
+        tags: List of tag strings to filter
+        
+    Returns:
+        Dictionary with filtered tags and elimination reasons
+    """
+    # Input validation
+    if not tags or not isinstance(tags, list):
+        return {
+            "valid_tags": [],
+            "eliminated": [],
+            "total_input": 0,
+            "total_filtered": 0,
+            "total_eliminated": 0,
+            "agent": "tag_rule_agent"
+        }
+    
+    # Filter out non-string items
+    valid_input_tags = []
+    invalid_items = 0
+    
+    for tag in tags:
+        if isinstance(tag, str):
+            valid_input_tags.append(tag)
+        else:
+            invalid_items += 1
+    
+    if invalid_items > 0:
+        print(f"[tag_rule_agent] Warning: Filtered out {invalid_items} non-string items")
+    
+    if not valid_input_tags:
+        return {
+            "valid_tags": [],
+            "eliminated": [],
+            "total_input": len(tags),
+            "total_filtered": 0,
+            "total_eliminated": 0,
+            "agent": "tag_rule_agent"
+        }
+    
     filtered = []
     eliminated = []
     seen = set()
-    for tag in tags:
+    
+    for tag in valid_input_tags:
+        # Normalize tag
         tag_norm = tag.lower().replace(' ', '-')
+        
+        # Validate tag
         valid, reason = is_valid_tag(tag_norm, seen)
+        
         if valid:
             filtered.append(tag_norm)
             seen.add(tag_norm)
         else:
             eliminated.append({"tag": tag, "reason": reason})
+    
     # Remove near-duplicates (edit distance 1 or 2)
     def is_near_duplicate(t, others):
         for o in others:

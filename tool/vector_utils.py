@@ -17,6 +17,12 @@ def list_to_vector(float_list: List[float]) -> np.ndarray:
         >>> print(vec)
         [0.1 0.2 0.3]
     """
+    if not isinstance(float_list, list):
+        raise ValueError(f"Input must be a list, got {type(float_list)}")
+    
+    if not float_list:
+        raise ValueError("Input list is empty")
+    
     return np.array(float_list)
 
 
@@ -41,12 +47,29 @@ def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
         >>> print(similarity)
         1.0
     """
+    # Input validation
+    if not isinstance(vec1, np.ndarray) or not isinstance(vec2, np.ndarray):
+        raise ValueError("Both inputs must be numpy arrays")
+    
+    if vec1.shape != vec2.shape:
+        raise ValueError(f"Vector dimensions must match: {vec1.shape} vs {vec2.shape}")
+    
+    # Check for NaN or Inf
+    if np.any(np.isnan(vec1)) or np.any(np.isinf(vec1)):
+        print("[vector_utils] Warning: vec1 contains NaN or Inf values")
+        return 0.0
+    
+    if np.any(np.isnan(vec2)) or np.any(np.isinf(vec2)):
+        print("[vector_utils] Warning: vec2 contains NaN or Inf values")
+        return 0.0
+    
     dot_product = np.dot(vec1, vec2)
     norm1 = np.linalg.norm(vec1)
     norm2 = np.linalg.norm(vec2)
     
     # Handle zero vectors
     if norm1 == 0 or norm2 == 0:
+        print("[vector_utils] Warning: One or both vectors have zero magnitude")
         return 0.0
     
     return float(dot_product / (norm1 * norm2))
@@ -77,6 +100,16 @@ def rank_by_score(items: List[Dict[str, Any]], score_key: str = "score") -> List
     if not items:
         return []
     
+    if not isinstance(items, list):
+        raise ValueError(f"items must be a list, got {type(items)}")
+    
+    # Validate all items are dictionaries and have the score key
+    for i, item in enumerate(items):
+        if not isinstance(item, dict):
+            raise ValueError(f"items[{i}] must be a dictionary")
+        if score_key not in item:
+            raise ValueError(f"items[{i}] missing required key '{score_key}'")
+    
     # Sort by score in descending order (reverse=True for non-increasing)
     sorted_items = sorted(items, key=lambda x: x.get(score_key, 0), reverse=True)
     
@@ -104,10 +137,28 @@ def batch_cosine_similarity(
         >>> print(similarities)
         [1.0, 0.0, 0.7071067811865475]
     """
+    if not isinstance(query_vector, np.ndarray):
+        raise ValueError("query_vector must be a numpy array")
+    
+    if not vectors:
+        return []
+    
+    if not isinstance(vectors, list):
+        raise ValueError(f"vectors must be a list, got {type(vectors)}")
+    
     similarities = []
-    for vec in vectors:
-        sim = cosine_similarity(query_vector, vec)
-        similarities.append(sim)
+    for i, vec in enumerate(vectors):
+        if not isinstance(vec, np.ndarray):
+            print(f"[vector_utils] Warning: Skipping non-array vector at index {i}")
+            similarities.append(0.0)
+            continue
+        
+        try:
+            sim = cosine_similarity(query_vector, vec)
+            similarities.append(sim)
+        except Exception as e:
+            print(f"[vector_utils] Error calculating similarity at index {i}: {str(e)}")
+            similarities.append(0.0)
     
     return similarities
 
@@ -130,9 +181,13 @@ def normalize_vector(vector: np.ndarray) -> np.ndarray:
         >>> print(np.linalg.norm(normalized))
         1.0
     """
+    if not isinstance(vector, np.ndarray):
+        raise ValueError("vector must be a numpy array")
+    
     norm = np.linalg.norm(vector)
     
     if norm == 0:
+        print("[vector_utils] Warning: Cannot normalize zero vector")
         return vector
     
     return vector / norm
@@ -156,6 +211,12 @@ def euclidean_distance(vec1: np.ndarray, vec2: np.ndarray) -> float:
         >>> print(dist)
         5.0
     """
+    if not isinstance(vec1, np.ndarray) or not isinstance(vec2, np.ndarray):
+        raise ValueError("Both inputs must be numpy arrays")
+    
+    if vec1.shape != vec2.shape:
+        raise ValueError(f"Vector dimensions must match: {vec1.shape} vs {vec2.shape}")
+    
     return float(np.linalg.norm(vec1 - vec2))
 
 
@@ -177,4 +238,10 @@ def dot_product(vec1: np.ndarray, vec2: np.ndarray) -> float:
         >>> print(result)
         32.0
     """
+    if not isinstance(vec1, np.ndarray) or not isinstance(vec2, np.ndarray):
+        raise ValueError("Both inputs must be numpy arrays")
+    
+    if vec1.shape != vec2.shape:
+        raise ValueError(f"Vector dimensions must match: {vec1.shape} vs {vec2.shape}")
+    
     return float(np.dot(vec1, vec2))

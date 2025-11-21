@@ -31,8 +31,24 @@ def deduplicate_tags_semantically(
         >>> print(result)
         ['javascript', 'python']  # 'js' removed as duplicate of 'javascript'
     """
+    # Input validation
     if not tag_data:
         return []
+    
+    if not isinstance(tag_data, list):
+        raise ValueError(f"tag_data must be a list, got {type(tag_data)}")
+    
+    if not (0.0 <= similarity_threshold <= 1.0):
+        raise ValueError(f"similarity_threshold must be between 0 and 1, got {similarity_threshold}")
+    
+    # Validate data structure
+    for i, item in enumerate(tag_data):
+        if not isinstance(item, dict):
+            raise ValueError(f"tag_data[{i}] must be a dictionary")
+        if "tag" not in item or "vector" not in item:
+            raise ValueError(f"tag_data[{i}] must have 'tag' and 'vector' keys")
+        if not isinstance(item["vector"], np.ndarray):
+            raise ValueError(f"tag_data[{i}]['vector'] must be a numpy array")
     
     # Track which tags to keep
     unique_tags = []
@@ -54,11 +70,21 @@ def deduplicate_tags_semantically(
                 continue
             
             other_vector = tag_data[j]["vector"]
-            similarity = cosine_similarity(tag_vector, other_vector)
             
-            # If very similar, mark as duplicate (don't keep)
-            if similarity >= similarity_threshold:
-                seen_indices.add(j)
+            try:
+                similarity = cosine_similarity(tag_vector, other_vector)
+                
+                # Handle NaN values
+                if np.isnan(similarity) or np.isinf(similarity):
+                    print(f"[semantic_deduplication] Warning: Invalid similarity between '{tag_name}' and '{tag_data[j]["tag"]}', skipping")
+                    continue
+                
+                # If very similar, mark as duplicate (don't keep)
+                if similarity >= similarity_threshold:
+                    seen_indices.add(j)
+            except Exception as e:
+                print(f"[semantic_deduplication] Error comparing tags: {str(e)}")
+                continue
     
     return unique_tags
 
@@ -93,8 +119,22 @@ def deduplicate_tags_with_priority(
         >>> print(result)
         ['javascript', 'python']  # Kept 'javascript' over 'js' due to higher score
     """
+    # Input validation
     if not tag_data:
         return []
+    
+    if not isinstance(tag_data, list):
+        raise ValueError(f"tag_data must be a list, got {type(tag_data)}")
+    
+    if not (0.0 <= similarity_threshold <= 1.0):
+        raise ValueError(f"similarity_threshold must be between 0 and 1, got {similarity_threshold}")
+    
+    # Validate data structure
+    for i, item in enumerate(tag_data):
+        if not isinstance(item, dict):
+            raise ValueError(f"tag_data[{i}] must be a dictionary")
+        if "tag" not in item or "vector" not in item:
+            raise ValueError(f"tag_data[{i}] must have 'tag' and 'vector' keys")
     
     # Sort by priority (highest first) if priority key exists
     sorted_tags = sorted(
@@ -121,10 +161,19 @@ def deduplicate_tags_with_priority(
                 continue
             
             other_vector = sorted_tags[j]["vector"]
-            similarity = cosine_similarity(tag_vector, other_vector)
             
-            if similarity >= similarity_threshold:
-                seen_indices.add(j)
+            try:
+                similarity = cosine_similarity(tag_vector, other_vector)
+                
+                # Handle NaN values
+                if np.isnan(similarity) or np.isinf(similarity):
+                    continue
+                
+                if similarity >= similarity_threshold:
+                    seen_indices.add(j)
+            except Exception as e:
+                print(f"[semantic_deduplication] Error in priority deduplication: {str(e)}")
+                continue
     
     return unique_tags
 
@@ -153,11 +202,27 @@ def get_semantic_clusters(
         ... ]
         >>> clusters = get_semantic_clusters(tags)
         >>> print(clusters)
-        [['javascript', 'js'], ['python', 'py']]
+        ['javascript', 'react', 'frontend', 'ui']
     """
+    # Input validation
     if not tag_data:
         return []
     
+    if not isinstance(tag_data, list):
+        raise ValueError(f"tag_data must be a list, got {type(tag_data)}")
+    
+    if not (0.0 <= similarity_threshold <= 1.0):
+        raise ValueError(f"similarity_threshold must be between 0 and 1, got {similarity_threshold}")
+    
+    # Validate data structure
+    for i, item in enumerate(tag_data):
+        if not isinstance(item, dict):
+            raise ValueError(f"tag_data[{i}] must be a dictionary")
+        if "tag" not in item or "vector" not in item:
+            raise ValueError(f"tag_data[{i}] must have 'tag' and 'vector' keys")
+        if not isinstance(item["vector"], np.ndarray):
+            raise ValueError(f"tag_data[{i}]['vector'] must be a numpy array")
+            
     clusters = []
     assigned = set()
     
@@ -176,11 +241,20 @@ def get_semantic_clusters(
                 continue
             
             other_vector = tag_data[j]["vector"]
-            similarity = cosine_similarity(tag_vector, other_vector)
             
-            if similarity >= similarity_threshold:
-                cluster.append(tag_data[j]["tag"])
-                assigned.add(j)
+            try:
+                similarity = cosine_similarity(tag_vector, other_vector)
+                
+                # Handle NaN values
+                if np.isnan(similarity) or np.isinf(similarity):
+                    continue
+                
+                if similarity >= similarity_threshold:
+                    cluster.append(tag_data[j]["tag"])
+                    assigned.add(j)
+            except Exception as e:
+                print(f"[semantic_deduplication] Error in clustering: {str(e)}")
+                continue
         
         clusters.append(cluster)
     

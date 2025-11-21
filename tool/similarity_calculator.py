@@ -3,6 +3,36 @@ from typing import List, Dict, Any, Tuple
 from tool.vector_utils import cosine_similarity
 
 
+def _validate_tag_data(tag_data: List[Dict[str, Any]]) -> bool:
+    """Validate tag data structure"""
+    if not isinstance(tag_data, list):
+        return False
+    for item in tag_data:
+        if not isinstance(item, dict):
+            return False
+        if "tag" not in item or "vector" not in item:
+            return False
+        if not isinstance(item["tag"], str):
+            return False
+        if not isinstance(item["vector"], np.ndarray):
+            return False
+    return True
+
+
+def _validate_chunk_data(chunk_data: List[Dict[str, Any]]) -> bool:
+    """Validate chunk data structure"""
+    if not isinstance(chunk_data, list):
+        return False
+    for item in chunk_data:
+        if not isinstance(item, dict):
+            return False
+        if "chunk" not in item or "vector" not in item:
+            return False
+        if not isinstance(item["vector"], np.ndarray):
+            return False
+    return True
+
+
 def calculate_tag_chunk_similarity(
     tag_data: List[Dict[str, np.ndarray]],
     readme_chunk_data: List[Dict[str, np.ndarray]]
@@ -36,11 +66,33 @@ def calculate_tag_chunk_similarity(
         >>> print(result)
         [("javascript", 0.95), ("python", 0.92)]
     """
+    # Input validation
     if not tag_data:
+        print("[similarity_calculator] Warning: tag_data is empty")
         return []
     
     if not readme_chunk_data:
+        print("[similarity_calculator] Warning: readme_chunk_data is empty")
         return []
+    
+    # Validate data structures
+    if not _validate_tag_data(tag_data):
+        raise ValueError("Invalid tag_data structure. Each item must have 'tag' (str) and 'vector' (np.ndarray)")
+    
+    if not _validate_chunk_data(readme_chunk_data):
+        raise ValueError("Invalid readme_chunk_data structure. Each item must have 'chunk' and 'vector' (np.ndarray)")
+    
+    # Validate vector dimensions are consistent
+    if tag_data and readme_chunk_data:
+        tag_dim = tag_data[0]["vector"].shape[0]
+        chunk_dim = readme_chunk_data[0]["vector"].shape[0]
+        
+        if tag_dim != chunk_dim:
+            raise ValueError(
+                f"Vector dimension mismatch: tag vectors have dimension {tag_dim}, "
+                f"but chunk vectors have dimension {chunk_dim}"
+            )
+    
     
     results = []
     
@@ -54,10 +106,20 @@ def calculate_tag_chunk_similarity(
         # Calculate similarity with each chunk and find maximum
         for chunk_item in readme_chunk_data:
             chunk_vector = chunk_item["vector"]
-            similarity = cosine_similarity(tag_vector, chunk_vector)
             
-            if similarity > max_similarity:
-                max_similarity = similarity
+            try:
+                similarity = cosine_similarity(tag_vector, chunk_vector)
+                
+                # Handle NaN or Inf values
+                if np.isnan(similarity) or np.isinf(similarity):
+                    print(f"[similarity_calculator] Warning: Invalid similarity score for tag '{tag_name}', skipping")
+                    continue
+                
+                if similarity > max_similarity:
+                    max_similarity = similarity
+            except Exception as e:
+                print(f"[similarity_calculator] Error calculating similarity for tag '{tag_name}': {str(e)}")
+                continue
         
         results.append((tag_name, float(max_similarity)))
     

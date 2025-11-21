@@ -20,33 +20,102 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
     Returns:
         Dictionary containing similarity scores and analysis
     """
+    # Input validation
+    if not readme_content or not isinstance(readme_content, str):
+        return {
+            "success": False,
+            "error": "Invalid readme_content: must be a non-empty string",
+            "agent": "tag_similarity_agent"
+        }
+    
+    if not readme_content.strip():
+        return {
+            "success": False,
+            "error": "README content is empty after stripping whitespace",
+            "agent": "tag_similarity_agent"
+        }
+    
+    if not candidate_tags or not isinstance(candidate_tags, list):
+        return {
+            "success": False,
+            "error": "Invalid candidate_tags: must be a non-empty list",
+            "agent": "tag_similarity_agent"
+        }
+    
+    # Filter out non-string tags
+    valid_tags = [tag for tag in candidate_tags if isinstance(tag, str) and tag.strip()]
+    
+    if not valid_tags:
+        return {
+            "success": False,
+            "error": "No valid tags found in candidate_tags after filtering",
+            "agent": "tag_similarity_agent"
+        }
     
     try:
         # Step 1: Chunk the README content for better semantic coverage
-        readme_chunks = chunk_text(readme_content, chunk_size=1000, overlap=200)
+        try:
+            readme_chunks = chunk_text(readme_content, chunk_size=1000, overlap=200)
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to chunk README content: {str(e)}",
+                "agent": "tag_similarity_agent"
+            }
         
         if not readme_chunks:
             return {
                 "success": False,
-                "error": "Failed to chunk README content",
+                "error": "Failed to chunk README content - no chunks generated",
                 "agent": "tag_similarity_agent"
             }
         
         # Step 2: Embed README chunks using Ollama
-        readme_embeddings = get_ollama_embeddings(readme_chunks)
+        try:
+            readme_embeddings = get_ollama_embeddings(readme_chunks)
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to generate README embeddings: {str(e)}",
+                "agent": "tag_similarity_agent"
+            }
+        
+        if not readme_embeddings or len(readme_embeddings) != len(readme_chunks):
+            return {
+                "success": False,
+                "error": "Embedding count mismatch for README chunks",
+                "agent": "tag_similarity_agent"
+            }
         
         # Step 3: Embed candidate tags using Ollama
-        tag_embeddings = get_ollama_embeddings(candidate_tags)
+        try:
+            tag_embeddings = get_ollama_embeddings(valid_tags)
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to generate tag embeddings: {str(e)}",
+                "agent": "tag_similarity_agent"
+            }
+        
+        if not tag_embeddings or len(tag_embeddings) != len(valid_tags):
+            return {
+                "success": False,
+                "error": "Embedding count mismatch for tags",
+                "agent": "tag_similarity_agent"
+            }
         
         # Step 4: Prepare data structures for similarity calculation
         tag_data = [
             {"tag": tag, "vector": vector}
-            for tag, vector in zip(candidate_tags, tag_embeddings)
+            for tag, vector in zip(valid_tags, tag_embeddings)
         ]
         
         # Step 4.5: Semantic deduplication - Remove semantically identical tags
-        # (e.g., 'javascript' and 'js', 'python' and 'py')
-        deduplicated_tags = deduplicate_tags_semantically(tag_data, similarity_threshold=0.8)
+        try:
+            deduplicated_tags = deduplicate_tags_semantically(tag_data, similarity_threshold=0.8)
+        except Exception as e:
+            print(f"[tag_similarity_agent] Warning: Deduplication failed, using all tags: {str(e)}")
+            deduplicated_tags = valid_tags
         
         # Filter tag_data to only include deduplicated tags
         tag_data_deduplicated = [
@@ -54,7 +123,7 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
         ]
         
         # Track how many duplicates were removed
-        duplicates_removed = len(candidate_tags) - len(deduplicated_tags)
+        duplicates_removed = len(valid_tags) - len(deduplicated_tags)
         
         readme_chunk_data = [
             {"chunk": chunk, "vector": vector}
@@ -62,7 +131,40 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
         ]
         
         # Step 5: Calculate similarity using the similarity calculator tool
-        ranked_tags = calculate_tag_chunk_similarity(tag_data_deduplicated, readme_chunk_data)
+        try:
+            ranked_tags = calculate_tag_chunk_similarity(tag_data_deduplicated, readme_chunk_data)
+        except Exception as e:
+            return {
+                "success": False,
+                "error": f"Failed to calculate tag similarities: {str(e)}",
+                "agent": "tag_similarity_agent"
+            }
+        
+        if not ranked_tags:
+            return {
+                "success": True,
+                "agent": "tag_similarity_agent",
+                "method": "ollama_embeddings_with_chunking_and_deduplication",
+                "total_tags_input": len(candidate_tags),
+                "total_tags_after_dedup": len(deduplicated_tags),
+                "duplicates_removed": duplicates_removed,
+                "total_chunks": len(readme_chunks),
+                "tag_similarities": [],
+                "categorized_tags": {
+                    "high_relevance": [],
+                    "medium_relevance": [],
+                    "low_relevance": []
+                },
+                "statistics": {
+                    "average_similarity": 0.0,
+                    "max_similarity": 0.0,
+                    "min_similarity": 0.0,
+                    "high_relevance_count": 0,
+                    "medium_relevance_count": 0,
+                    "low_relevance_count": 0
+                },
+                "recommended_tags": []
+            }
         
         # Step 6: Format results to match expected output structure
         tag_similarities = [
@@ -80,11 +182,11 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
         medium_relevance = [t for t in tag_similarities if 0.5 < t["similarity_score"] <= 0.7]
         low_relevance = [t for t in tag_similarities if t["similarity_score"] <= 0.5]
         
-        # Calculate statistics
+        # Calculate statistics with zero-division protection
         scores = [t["similarity_score"] for t in tag_similarities]
-        avg_similarity = np.mean(scores) if scores else 0.0
-        max_similarity = np.max(scores) if scores else 0.0
-        min_similarity = np.min(scores) if scores else 0.0
+        avg_similarity = float(np.mean(scores)) if scores else 0.0
+        max_similarity = float(np.max(scores)) if scores else 0.0
+        min_similarity = float(np.min(scores)) if scores else 0.0
         
         return {
             "success": True,
@@ -101,9 +203,9 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
                 "low_relevance": [t["tag"] for t in low_relevance]
             },
             "statistics": {
-                "average_similarity": float(avg_similarity),
-                "max_similarity": float(max_similarity),
-                "min_similarity": float(min_similarity),
+                "average_similarity": avg_similarity,
+                "max_similarity": max_similarity,
+                "min_similarity": min_similarity,
                 "high_relevance_count": len(high_relevance),
                 "medium_relevance_count": len(medium_relevance),
                 "low_relevance_count": len(low_relevance)
@@ -117,3 +219,4 @@ def calculate_tag_similarity(readme_content: str, candidate_tags: List[str]) -> 
             "error": f"Similarity calculation failed: {str(e)}",
             "agent": "tag_similarity_agent"
         }
+
